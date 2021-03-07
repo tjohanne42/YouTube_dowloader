@@ -1,6 +1,7 @@
 import pygame as pg
 import os
 import atexit
+import constants
 
 def ft_pg_init	(
 				title=False,
@@ -48,6 +49,7 @@ def ft_pg_init	(
 	else:
 		info = pg.display.Info()
 		window_width, window_height = int(info.current_w * 9 / 10), int(info.current_h * 9 / 10)
+
 
 
 	# create the screen

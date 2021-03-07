@@ -20,12 +20,13 @@ FT_WTHEME_PLACECHOLDER_COLOR = (96, 96, 96)
 #		- gestion des caracs chelous genre TAB qui affichent des carrés en mode caractère pas pris en compte
 #		- ajout d'une FONCTION qui permet de changer les parametres (couleur, texte, etc...) depuis le main
 #		- ajout argument fonction pour lancer une fonction lorsque l'utilisateur tape entree
-#		- ajout argument bg transparent
+#		- ajout argument bg / text / threshold transparent
 #		- ajout argument croix sur le coté droit pour supprimer toute la recherche
 #		- ajout argument bouton search
 #		- ajout argument bouton reconnaissance vocale
 #		- ajout argument historique des recherches qui s'affichent quand on clique sur la barre
 #		- ajout argument changement de la couleur de la bordure quand active = True
+#		- ajout argument autocompletion recherche
 
 FT_AUTO_FONT = pg.font.Font(pg.font.get_default_font(), 30)
 
