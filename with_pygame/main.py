@@ -22,7 +22,6 @@ from youtubesearchpython import VideosSearch
 import pafy
 import cv2
 import imutils
-#from pyimagesearch.nms import non_max_suppression_slow
 
 # my modules
 from ft_pg_init import *
@@ -33,60 +32,6 @@ WHITE_TXT = (200, 200, 200)
 
 def random_color():
 	return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-
-def callback(self, player):
-
-	print('FPS =',  player.get_fps())
-	print('time =', player.get_time(), '(ms)')
-	print('FRAME =', .001 * player.get_time() * player.get_fps())
-
-
-def non_max_suppression_fast(boxes, overlapThresh):
-	# if there are no boxes, return an empty list
-	if len(boxes) == 0:
-		return []
-	# if the bounding boxes integers, convert them to floats --
-	# this is important since we'll be doing a bunch of divisions
-	if boxes.dtype.kind == "i":
-		boxes = boxes.astype("float")
-	# initialize the list of picked indexes	
-	pick = []
-	# grab the coordinates of the bounding boxes
-	x1 = boxes[:,0]
-	y1 = boxes[:,1]
-	x2 = boxes[:,2]
-	y2 = boxes[:,3]
-	# compute the area of the bounding boxes and sort the bounding
-	# boxes by the bottom-right y-coordinate of the bounding box
-	area = (x2 - x1 + 1) * (y2 - y1 + 1)
-	idxs = np.argsort(y2)
-	# keep looping while some indexes still remain in the indexes
-	# list
-	while len(idxs) > 0:
-		# grab the last index in the indexes list and add the
-		# index value to the list of picked indexes
-		last = len(idxs) - 1
-		i = idxs[last]
-		pick.append(i)
-		# find the largest (x, y) coordinates for the start of
-		# the bounding box and the smallest (x, y) coordinates
-		# for the end of the bounding box
-		xx1 = np.maximum(x1[i], x1[idxs[:last]])
-		yy1 = np.maximum(y1[i], y1[idxs[:last]])
-		xx2 = np.minimum(x2[i], x2[idxs[:last]])
-		yy2 = np.minimum(y2[i], y2[idxs[:last]])
-		# compute the width and height of the bounding box
-		w = np.maximum(0, xx2 - xx1 + 1)
-		h = np.maximum(0, yy2 - yy1 + 1)
-		# compute the ratio of overlap
-		overlap = (w * h) / area[idxs[:last]]
-		# delete all indexes from the index list that have
-		idxs = np.delete(idxs, np.concatenate(([last],
-			np.where(overlap > overlapThresh)[0])))
-	# return only the bounding boxes that were picked using the
-	# integer data type
-	return boxes[pick].astype("int")
-
 
 class MyApp(object):
 
@@ -146,8 +91,8 @@ class MyApp(object):
 			print("quality :", best_audio.quality)
 			print("rawbitrate :", best_audio.rawbitrate)
 
-			#best_audio.download()
-			#best_video.download()
+			best_audio.download("video")
+			best_video.download("video")
 
 			video_url = best_video.url
 			audio_url = best_audio.url
@@ -187,6 +132,10 @@ class MyApp(object):
 			if not cap.isOpened():
 				print("File Cannot be Opened")
 
+			# init face detection
+			face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+			eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+
 			# init ORB // not working
 			#orb = cv2.ORB()
 
@@ -194,14 +143,14 @@ class MyApp(object):
 			#hog = cv2.HOGDescriptor()
 			#hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
+			timer = time.time()
 			while(True):
+				time_to_read = time.time()
 				# Capture frame-by-frame
 				ret, frame = cap.read()
 				#print cap.isOpened(), ret
 				if frame is not None:
 					# faces detection
-					#face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-					#eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
 					#gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 					#faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 					#for (x,y,w,h) in faces:
@@ -213,10 +162,10 @@ class MyApp(object):
 					#		cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
 
 					# draw contours
-					#gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) 
-					#edged = cv2.Canny(gray, 30, 200)
-					#contours, hierarchy = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-					#cv2.drawContours(frame, contours, -1, (0, 255, 0), 3)
+					gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) 
+					edged = cv2.Canny(gray, 0, 255)
+					contours, hierarchy = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+					cv2.drawContours(frame, contours, -1, (0, 255, 0), 3)
 
 					# ORB // not working
 					#kp = orb.detect(frame,None)
@@ -231,7 +180,7 @@ class MyApp(object):
 					#res = cv2.bitwise_and(frame,frame, mask= mask)
 
 					# canny Edge
-					#frame = cv2.Canny(frame,100,200)
+					#frame = cv2.Canny(frame,10,255)
 
 					# fourrier transform // pas compris
 					#f = np.fft.fft2(frame)
@@ -271,7 +220,6 @@ class MyApp(object):
 					#bounding_box_cordinates, weights =  hog.detectMultiScale(frame, winStride = (4, 4),
 					#	padding = (8, 8), scale = 1.10, useMeanshiftGrouping=True)
 					#person = 1
-					#pick = non_max_suppression_fast(bounding_box_cordinates, 0.3)
 					#for x,y,w,h in bounding_box_cordinates:
 					#	cv2.rectangle(frame, (x,y), (x+w,y+h), (0,255,0), 2)
 					#	cv2.putText(frame, f'person {person}', (x,y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1)
@@ -286,12 +234,24 @@ class MyApp(object):
 					#cv2.imshow('circles', cimg)
 					#cv2.imshow('mask', mask)
 					#cv2.imshow('res', res)
-
-					if cv2.waitKey(int(1000 / fps)) & 0xFF == ord('q'):
+					#timer = time.time() * 1000
+					#while time.time() * 1000 - timer < 1000 / fps:
+					#	pass
+					#if 0xFF == ord('q'):
+					#	break
+					if (time.time() - time_to_read) * 1000 >= 1000 / fps:
+						print("time to print:", time.time() - time_to_read)
+					expected = 1000 / fps
+					to_print = (time.time() - time_to_read) * 1000
+					add_delay = max(int(1000 / fps - (time.time() - time_to_read) * 1000), 1)
+					total_delay = to_print + add_delay
+					print("expected:", expected, "to_print:", to_print, "add_delay:", add_delay, "total_delay:", total_delay)
+					if cv2.waitKey(max(int(1000 / fps - (time.time() - time_to_read) * 1000), 1)) & 0xFF == ord('q'):
 						break
 				else:
 					print("Frame is None")
 					break
+			print("time to show entire video :", time.time() - timer)
 			cap.release()
 			cv2.destroyAllWindows()
 

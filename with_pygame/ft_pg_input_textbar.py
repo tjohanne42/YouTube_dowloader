@@ -1,5 +1,6 @@
 import pygame as pg
 import pyperclip
+import time
 
 pg.font.init()
 
@@ -11,8 +12,10 @@ FT_WTHEME_PLACECHOLDER_COLOR = (96, 96, 96)
 
 # todo: 
 #		- create some THEMES (black, white, blue, etc...)
-#		- limiter la taille du texte pour pas qu'il depasse
+#	//	- limiter la taille du texte pour pas qu'il depasse
 #		- clignotement du curseur
+#		- changer la position du curseur en clique gauche
+#		- 2 clic gauche : selection du mot, 3 clic gauche : selection de la ligne
 #		- selection du texte (pour copier coller, supprimer, couper)
 #		- selectionner une font auto avec une taille adaptée
 #		- historique pour ctrl + z et ctrl + shift + z
@@ -41,15 +44,13 @@ class FtPgInputTextbar(object):
 				border=True,
 				border_width=2,
 				border_color=FT_WTHEME_BORDER_COLOR,
-				initial_text="",
 				placeholder=False,
+				placeholder_font=False,
 				placeholder_color=FT_WTHEME_PLACECHOLDER_COLOR,
 				font=FT_AUTO_FONT,
 				text_color=FT_WTHEME_TXT,
 				text_antialias=True,
-				text_centered=False,
-				text_max_width=-1,
-				cursor_ms_visible=500,
+				distance_left_text=False, # distance entre les bordures de la barre et du texte
 				cursor_color=FT_WTHEME_CURSOR_COLOR,
 				display_on=True
 				):
@@ -64,26 +65,37 @@ class FtPgInputTextbar(object):
 		self.font = font
 		self.text_color = text_color
 		self.text_antialias = text_antialias
-		self.text_centered=text_centered
-		if text_max_width < 0:
-			self.text_max_width = self.rect.w - 30 - rounded / 2
-		else:
-			self.text_max_width = text_max_width
 		self.cursor_color = cursor_color
 		self.display_on = display_on
-		if placeholder:
-			self.placeholder = font.render(placeholder, text_antialias, placeholder_color)
+
+		self.font_max_height = self.font.size("|")[1]
+		self.distance_top_text = self.rect.h / 2 - self.font_max_height / 2
+		if distance_left_text:
+			self.distance_left_text = distance_left_text
 		else:
-			self.placeholder = placeholder
+			self.distance_left_text = 10
+		self.text_max_width = int(self.rect.w - self.distance_left_text * 2)
+		
+		if placeholder:
+			if placeholder_font:
+				self.placeholder = placeholder_font.render(placeholder, text_antialias, placeholder_color)
+			else:
+				self.placeholder = font.render(placeholder, text_antialias, placeholder_color)
+		else:
+			self.placeholder = False
+
 		self.active = False
 		self.ctrl_pressed = False
 		self.cursor_ibeam = False
-		self.text = initial_text
-		self.distance_top_text = self.rect.h / 2 - self.font.size("|")[1] / 2
-		self.init_bg_surface_and_cursor()
+		self.text = ""
 
+		self.cursor_pos = len(self.text)
+		self.cursor_pix_pos = 0
 
-	def init_bg_surface_and_cursor(self):
+		self.init_surface_bg_and_cursor()
+		self.get_actual_surface()
+
+	def init_surface_bg_and_cursor(self):
 		# save bg_surface
 		self.bg_surface = pg.Surface((self.rect.w, self.rect.h))
 		self.bg_surface.fill(self.bg_color)
@@ -98,38 +110,50 @@ class FtPgInputTextbar(object):
 				width=self.border_width, border_radius=self.rounded)
 
 		# save cursor_surface
-		self.cursor_surface = pg.Surface((1, self.font.size("|")[1]))
+		self.cursor_surface = pg.Surface((1, self.font_max_height))
 		self.cursor_surface.fill(self.cursor_color)
-
-		# save actual_surface
-		self.get_actual_surface()
 
 
 	def get_actual_surface(self):
-		# copy bg surface into actual_surface
+		self.display_text_x = 0
 		self.actual_surface = self.bg_surface.copy()
-		
-		blit_text = True
 
-		if self.text != "":
-			text_surface = self.font.render(self.text, self.text_antialias, self.text_color)
-		elif not self.active and self.placeholder:
-			text_surface = self.placeholder.copy()
-		else:
-			blit_text = False
-			if self.text_centered:
-				self.distance_left_text = self.rect.w / 2 
+		if self.active:
+			left_text_surface = self.font.render(self.text[:self.cursor_pos], self.text_antialias, self.text_color)
+			left_text_size = left_text_surface.get_size()[0]
+			#right_text_surface = self.font.render(self.text[self.cursor_pos:], self.text_antialias, self.text_color)
+
+			full_text_surface = self.font.render(self.text, self.text_antialias, self.text_color)
+
+			if self.cursor_pix_pos > self.text_max_width:
+				self.cursor_pix_pos = self.text_max_width
+			elif self.cursor_pix_pos < 0:
+				self.cursor_pix_pos = 0
+			# s'il y a des carac cachés a gauche alors qu'il y a la place
+			# // A FAIRE
+			#elif self.cursor_pos == len(self.text)
+
+			print("cursor_pix_pos", self.cursor_pix_pos)
+			print("left_text_size", left_text_size)
+
+			text_surface = pg.Surface((self.text_max_width, self.font_max_height))
+			text_surface.fill(self.bg_color)
+			
+			if left_text_size > self.cursor_pix_pos:
+				text_surface.blit(full_text_surface, (0 - (left_text_size - self.cursor_pix_pos), 0))
 			else:
-				self.distance_left_text = (self.rect.w - self.text_max_width) / 2
+				text_surface.blit(full_text_surface, (0, 0))
 
-		if blit_text:
-			if self.text_centered:
-				self.distance_left_text = self.rect.w / 2 - text_surface.get_size()[0] / 2
-			else:
-				self.distance_left_text = (self.rect.w - self.text_max_width) / 2
-
-			# blit text on actual_surface
 			self.actual_surface.blit(text_surface, (self.distance_left_text, self.distance_top_text))
+
+		elif self.text != "":
+				text_surface = self.font.render(self.text, self.text_antialias, self.text_color)
+
+				self.actual_surface.blit(text_surface, (self.distance_left_text, self.distance_left_text))
+
+		elif self.placeholder:
+			self.actual_surface.blit(self.placeholder, (self.distance_left_text, self.distance_left_text))
+
 
 
 	def event(self, event):
@@ -139,82 +163,89 @@ class FtPgInputTextbar(object):
 				if self.rect.collidepoint((mx, my)):
 					if not self.active:
 						self.active = True
-						self.cursor_position = len(self.text)
+						self.cursor_pos = len(self.text)
+						self.cursor_pix_pos = self.font.size(self.text)[0]
 						self.ctrl_pressed = False
-						self.get_actual_surface()
 				else:
 					self.active = False
-					self.get_actual_surface()
 
 			elif self.active and event.type == pg.KEYDOWN:
 				if event.key == 1073742048:
 					self.ctrl_pressed = True
+
 				elif event.key == pg.K_BACKSPACE:
-					self.text = (self.text[:max(self.cursor_position - 1, 0)] + self.text[self.cursor_position:])
-					# Subtract one from cursor_pos, but do not go below zero:
-					self.cursor_position = max(self.cursor_position - 1, 0)
-					# save actual_surface (with text)
-					self.get_actual_surface()
+					if self.cursor_pos > 0:
+						previous_size = self.font.size(self.text)[0]
+						self.text = (self.text[:self.cursor_pos - 1] + self.text[self.cursor_pos:])
+						self.cursor_pix_pos -= (previous_size - self.font.size(self.text)[0])
+						self.cursor_pos -= 1
+
 				elif event.key == pg.K_DELETE:
-					self.text = (self.text[:self.cursor_position] + self.text[self.cursor_position + 1:])
-					self.get_actual_surface()
+					self.text = (self.text[:self.cursor_pos] + self.text[self.cursor_pos + 1:])
+				
 				elif event.key == pg.K_RETURN:
 					self.active = False
 					self.get_actual_surface()
 					return self.text
 
 				elif event.key == pg.K_RIGHT:
-					# Add one to cursor_pos, but do not exceed len(input_string)
-					self.cursor_position = min(self.cursor_position + 1, len(self.text))
+					if self.cursor_pos < len(self.text):
+						self.cursor_pix_pos += (self.font.size(self.text[:self.cursor_pos + 1])[0] - self.font.size(self.text[:self.cursor_pos])[0])
+						self.cursor_pos += 1
+
 				elif event.key == pg.K_LEFT:
-					# Subtract one from cursor_pos, but do not go below zero:
-					self.cursor_position = max(self.cursor_position - 1, 0)
+					if self.cursor_pos > 0:
+						self.cursor_pix_pos -= (self.font.size(self.text[:self.cursor_pos])[0] - self.font.size(self.text[:self.cursor_pos - 1])[0])
+						self.cursor_pos -= 1
+
 				elif event.key == pg.K_END:
-					self.cursor_position = len(self.text)
+					self.cursor_pix_pos += (self.font.size(self.text)[0] - self.font.size(self.text[:self.cursor_pos])[0])
+					self.cursor_pos = len(self.text)
+
 				elif event.key == pg.K_HOME:
-					self.cursor_position = 0
+					self.cursor_pix_pos = 0
+					self.cursor_pos = 0
 
 				elif self.ctrl_pressed:
 					if event.key == ord("v"):
 						string = pyperclip.paste()
-						self.text = (self.text[:self.cursor_position] + string + self.text[self.cursor_position:])
-						self.cursor_position += len(string)
-						self.get_actual_surface()
+						previous_size = self.font.size(self.text)[0]
+						self.text = (self.text[:self.cursor_pos] + string + self.text[self.cursor_pos:])
+						self.cursor_pix_pos += (self.font.size(self.text)[0] - previous_size)
+						self.cursor_pos += len(string)
+
 					elif event.key == ord("c"):
 						pyperclip.copy(self.text)
 					elif event.key == ord("x"):
 						pyperclip.copy(self.text)
 						self.text = ""
-						self.cursor_position = 0
-						self.get_actual_surface()
+						self.cursor_pix_pos = 0
+						self.cursor_pos = 0
 				else:
-					self.text = (self.text[:self.cursor_position] + event.unicode + self.text[self.cursor_position:])
-					self.cursor_position += len(event.unicode)
-					self.get_actual_surface()
+					previous_size = self.font.size(self.text)[0]
+					self.text = (self.text[:self.cursor_pos] + event.unicode + self.text[self.cursor_pos:])
+					self.cursor_pix_pos += (self.font.size(self.text)[0] - previous_size)
+					self.cursor_pos += len(event.unicode)
 
 			elif event.type == pg.KEYUP and event.key == 1073742048:
 				self.ctrl_pressed = False
 
-		# if active is False or True
-		if event.type == pg.MOUSEMOTION:
-			mx, my = pg.mouse.get_pos()
-			if self.rect.collidepoint((mx, my)):
-				if not self.cursor_ibeam:
-					pg.mouse.set_system_cursor(pg.SYSTEM_CURSOR_IBEAM)
-					self.cursor_ibeam = True
-			elif self.cursor_ibeam:
-				pg.mouse.set_system_cursor(pg.SYSTEM_CURSOR_ARROW)
-				self.cursor_ibeam = False
+			# if active is False or True
+			if event.type == pg.MOUSEMOTION:
+				mx, my = pg.mouse.get_pos()
+				if self.rect.collidepoint((mx, my)):
+					if not self.cursor_ibeam:
+						pg.mouse.set_system_cursor(pg.SYSTEM_CURSOR_IBEAM)
+						self.cursor_ibeam = True
+				elif self.cursor_ibeam:
+					pg.mouse.set_system_cursor(pg.SYSTEM_CURSOR_ARROW)
+					self.cursor_ibeam = False
 
+			self.get_actual_surface()
 		return False
 
 	def display(self):
 		if self.display_on:
 			self.screen.blit(self.actual_surface, (self.rect.x, self.rect.y))
 			if self.active:
-				# display cursor
-				cursor_y_pos = self.font.size(self.text[:self.cursor_position])[0]
-				if self.cursor_position > 0:
-					cursor_y_pos -= self.cursor_surface.get_width()
-				self.screen.blit(self.cursor_surface,
-					(self.rect.x + cursor_y_pos + self.distance_left_text, self.rect.y + self.distance_top_text))
+				self.screen.blit(self.cursor_surface, (self.rect.x + self.distance_left_text + self.cursor_pix_pos, self.rect.y + self.distance_top_text))
