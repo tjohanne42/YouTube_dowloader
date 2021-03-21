@@ -37,6 +37,7 @@ class FtPgInputTextbar(object):
 	def __init__(
 				self,
 				screen,
+				id_=False,
 				pos=(0, 0),
 				size=(200, 50),
 				bg_color=FT_WTHEME_BG_COLOR,
@@ -56,6 +57,7 @@ class FtPgInputTextbar(object):
 				):
 
 		self.screen = screen
+		self.id_ = id_
 		self.rect = pg.Rect(pos[0], pos[1], size[0], size[1])
 		self.bg_color = bg_color
 		self.rounded = rounded
@@ -132,9 +134,6 @@ class FtPgInputTextbar(object):
 			# s'il y a des carac cachés a gauche alors qu'il y a la place
 			# // A FAIRE
 			#elif self.cursor_pos == len(self.text)
-
-			print("cursor_pix_pos", self.cursor_pix_pos)
-			print("left_text_size", left_text_size)
 
 			text_surface = pg.Surface((self.text_max_width, self.font_max_height))
 			text_surface.fill(self.bg_color)
