@@ -49,6 +49,7 @@ class FtPgButton(object):
 
 
 	def event(self, event):
+		self.click_ret = False
 		if self.display_on:
 			if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
 				mx, my = pg.mouse.get_pos()
@@ -60,7 +61,7 @@ class FtPgButton(object):
 				self.active = False
 				if self.hold:
 					self.hold = False
-					return True
+					self.click_ret = True
 				self.hold = False
 
 			elif event.type == pg.MOUSEMOTION:
@@ -68,7 +69,9 @@ class FtPgButton(object):
 					mx, my = pg.mouse.get_pos()
 					if not self.rect.collidepoint((mx, my)):
 						self.hold = False
-
+		if self.click_ret :
+			return True
+		return False
 
 	def display(self):
 		if self.display_on:
@@ -77,3 +80,7 @@ class FtPgButton(object):
 			else:
 				self.screen.blit(self.unactive_surface, (self.rect.x, self.rect.y))
 
+	def click(self):
+		if self.click_ret:
+			return True
+		return False
